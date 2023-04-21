@@ -7,6 +7,8 @@ import { throttle } from "./throttle";
 interface StreamCompletionArgs {
   apiKey: string;
   args: CreateCompletionRequest;
+  host: string;
+  path: string;
   onText: OnTextCallback;
   throttleMs?: number;
 }
@@ -17,6 +19,8 @@ interface StreamCompletionArgs {
 export const streamCompletion = async ({
   apiKey,
   args,
+  host = "https://api.openai.com",
+  path = "/v1/completions",
   onText,
   throttleMs,
 }: StreamCompletionArgs): Promise<string> => {
@@ -24,15 +28,18 @@ export const streamCompletion = async ({
   const handler = throttleMs ? throttle(throttleMs, onText, {}) : onText;
 
   // stream the completion
-  return await _streamCompletion(apiKey, args, handler);
+  return await _streamCompletion(apiKey, host, path, args, handler);
 };
 
 const _streamCompletion = async (
   token: string,
+  host: string,
+  path: string,
   args: CreateCompletionRequest,
   onText: OnTextCallback
 ) => {
-  const response = await fetch("https://api.openai.com/v1/completions", {
+  const url = new URL(path, host);
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
