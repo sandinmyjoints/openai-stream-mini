@@ -105,12 +105,12 @@ const _streamCompletion = async (
             `Unexpected response from OpenAI stream, len=${data.length}, msg=${error.message}, data=`,
             data
           );
-          throw error;
+          // throw error;
         }
 
-        if (json.content) {
+        if (json?.content) {
           fullText += json.content;
-        } else if (json.choices) {
+        } else if (json?.choices) {
           fullText += json.choices[0].text;
         } else {
           console.warn("Unexpected response from OpenAI stream, json=", json);
