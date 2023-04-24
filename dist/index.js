@@ -63,7 +63,9 @@ const _streamCompletion = async (token, host, path, args, onText) => {
                     json = JSON.parse(data);
                 }
                 catch (error) {
-                    console.error("Unexpected response from OpenAI stream, data=", data);
+                    console.error(
+                    // @ts-ignore
+                    `Unexpected response from OpenAI stream, len=${data.length}, msg=${error.message}, data=`, data);
                     throw error;
                 }
                 if (json.content) {
