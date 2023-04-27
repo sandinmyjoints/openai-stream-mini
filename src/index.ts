@@ -60,6 +60,7 @@ const _streamCompletion = async (
   const reader = response.body.getReader();
 
   let fullText = "";
+  let bufferedData: string | null = null;
 
   async function readMore() {
     const { value, done } = await reader.read();
@@ -79,12 +80,12 @@ const _streamCompletion = async (
           continue;
         }
 
-        let prefix;
+        let prefix = "";
         if (line.startsWith("data:")) {
           prefix = "data:";
         } else if (line.startsWith("delta:")) {
           prefix = "delta:";
-        } else {
+        } else if (!bufferedData) {
           console.error("Unexpected response from OpenAI stream, line=", line);
           throw new Error(
             "Unexpected response from OpenAI stream, line=" + line
@@ -98,27 +99,32 @@ const _streamCompletion = async (
 
         let json;
         try {
-          json = JSON.parse(data);
+          const fullData = bufferedData ? bufferedData + data : data;
+          json = JSON.parse(fullData);
+          bufferedData = null;
         } catch (error) {
           console.error(
             // @ts-ignore
             `Unexpected response from OpenAI stream, len=${data.length}, msg=${error.message}, data=`,
             data
           );
+          bufferedData = data;
           // throw error;
         }
 
-        if (json?.content) {
-          fullText += json.content;
-        } else if (json?.choices) {
-          fullText += json.choices[0].text;
-        } else {
-          console.warn("Unexpected response from OpenAI stream, json=", json);
-        }
-      }
+        if (!bufferedData) {
+          if (json?.content) {
+            fullText += json.content;
+          } else if (json?.choices) {
+            fullText += json.choices[0].text;
+          } else {
+            console.warn("Unexpected response from OpenAI stream, json=", json);
+          }
 
-      if (beforeText !== fullText) {
-        await onText(fullText);
+          if (beforeText !== fullText) {
+            await onText(fullText);
+          }
+        }
       }
 
       await readMore();

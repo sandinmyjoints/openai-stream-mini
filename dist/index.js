@@ -29,6 +29,7 @@ const _streamCompletion = async (token, host, path, args, onText) => {
     const decoder = new TextDecoder("utf8");
     const reader = response.body.getReader();
     let fullText = "";
+    let bufferedData = null;
     async function readMore() {
         const { value, done } = await reader.read();
         if (done) {
@@ -43,14 +44,14 @@ const _streamCompletion = async (token, host, path, args, onText) => {
                 if (!line.trim()) {
                     continue;
                 }
-                let prefix;
+                let prefix = "";
                 if (line.startsWith("data:")) {
                     prefix = "data:";
                 }
                 else if (line.startsWith("delta:")) {
                     prefix = "delta:";
                 }
-                else {
+                else if (!bufferedData) {
                     console.error("Unexpected response from OpenAI stream, line=", line);
                     throw new Error("Unexpected response from OpenAI stream, line=" + line);
                 }
@@ -60,26 +61,31 @@ const _streamCompletion = async (token, host, path, args, onText) => {
                 }
                 let json;
                 try {
-                    json = JSON.parse(data);
+                    const fullData = bufferedData ? bufferedData + data : data;
+                    json = JSON.parse(fullData);
+                    bufferedData = null;
                 }
                 catch (error) {
                     console.error(
                     // @ts-ignore
                     `Unexpected response from OpenAI stream, len=${data.length}, msg=${error.message}, data=`, data);
+                    bufferedData = data;
                     // throw error;
                 }
-                if (json?.content) {
-                    fullText += json.content;
+                if (!bufferedData) {
+                    if (json?.content) {
+                        fullText += json.content;
+                    }
+                    else if (json?.choices) {
+                        fullText += json.choices[0].text;
+                    }
+                    else {
+                        console.warn("Unexpected response from OpenAI stream, json=", json);
+                    }
+                    if (beforeText !== fullText) {
+                        await onText(fullText);
+                    }
                 }
-                else if (json?.choices) {
-                    fullText += json.choices[0].text;
-                }
-                else {
-                    console.warn("Unexpected response from OpenAI stream, json=", json);
-                }
-            }
-            if (beforeText !== fullText) {
-                await onText(fullText);
             }
             await readMore();
         }
