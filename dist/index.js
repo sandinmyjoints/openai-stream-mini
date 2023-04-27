@@ -72,11 +72,11 @@ const _streamCompletion = async (token, host, path, args, onText) => {
                     bufferedData = data;
                     // throw error;
                 }
-                if (!bufferedData) {
-                    if (json?.content) {
+                if (json) {
+                    if (json.content) {
                         fullText += json.content;
                     }
-                    else if (json?.choices) {
+                    else if (json.choices) {
                         fullText += json.choices[0].text;
                     }
                     else {
