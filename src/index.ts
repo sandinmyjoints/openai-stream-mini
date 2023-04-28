@@ -103,13 +103,12 @@ const _streamCompletion = async (
           json = JSON.parse(fullData);
           bufferedData = null;
         } catch (error) {
-          console.error(
+          console.warn(
             // @ts-ignore
-            `Unexpected response from OpenAI stream, len=${data.length}, msg=${error.message}, data=`,
+            `Partial or malformed response from OpenAI stream, len=${data.length}, msg=${error.message}, data=`,
             data
           );
           bufferedData = data;
-          // throw error;
         }
 
         if (json) {
